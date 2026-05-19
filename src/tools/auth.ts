@@ -12,7 +12,7 @@ function err(text: string): McpToolResult {
 }
 
 function redact(conn: Connection): Record<string, unknown> {
-  const config = { ...(conn.config as Record<string, unknown>) }
+  const config = { ...(conn.config as unknown as Record<string, unknown>) }
   delete config['apiKey']
   delete config['refreshToken']
   delete config['clientSecret']

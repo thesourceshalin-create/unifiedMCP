@@ -64,6 +64,7 @@ export interface DataSource {
 }
 
 export interface McpToolResult {
+  [key: string]: unknown
   content: Array<{ type: 'text'; text: string }>
   isError?: boolean
 }

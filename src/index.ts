@@ -50,7 +50,7 @@ server.tool('query_range', 'Fetch rows matching filter conditions', {
 
 server.tool('append_row', 'Add one or more rows to a sheet', {
   ...baseParams,
-  rows: z.array(z.record(z.unknown())),
+  rows: z.array(z.record(z.string(), z.unknown())),
 }, async (p) => handleAppendRow(p as Record<string, unknown>))
 
 server.tool('update_cell', 'Update a specific cell by row ID and column', {
@@ -109,7 +109,7 @@ server.tool('duplicate_sheet', 'Copy a sheet within the same source', {
 server.tool('bulk_update', 'Update all rows matching a filter condition', {
   ...baseParams,
   filters: z.array(filterSchema),
-  updates: z.record(z.unknown()),
+  updates: z.record(z.string(), z.unknown()),
 }, async (p) => handleBulkUpdate(p as Record<string, unknown>))
 
 server.tool('schedule_summary', 'Schedule a recurring summary of a sheet', {
