@@ -29,6 +29,7 @@ export async function saveConnection(connection: Connection): Promise<void> {
 }
 
 export async function removeConnection(id: string): Promise<void> {
+  await fs.mkdir(getMcpDir(), { recursive: true })
   const existing = await loadConnections()
   const updated = existing.filter(c => c.id !== id)
   await fs.writeFile(getConnectionsPath(), JSON.stringify(updated, null, 2))
