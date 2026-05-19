@@ -35,6 +35,17 @@ function applyFilters(rows: Row[], filters: QueryFilter[]): Row[] {
   )
 }
 
+function colIndexToLetter(index: number): string {
+  let letter = ''
+  let n = index + 1
+  while (n > 0) {
+    const rem = (n - 1) % 26
+    letter = String.fromCharCode(65 + rem) + letter
+    n = Math.floor((n - 1) / 26)
+  }
+  return letter
+}
+
 export class SheetsConnector implements DataSource {
   async listSheets(target: unknown): Promise<string[]> {
     const config = target as SheetsConfig
@@ -97,7 +108,13 @@ export class SheetsConnector implements DataSource {
   async insert(target: unknown, sheet: string, rows: Omit<Row, '_rowId'>[]): Promise<void> {
     const config = target as SheetsConfig
     const client = buildClient(config)
-    const values = rows.map(r => Object.values(r))
+    // Fetch headers to ensure correct column order
+    const headerRes = await client.spreadsheets.values.get({
+      spreadsheetId: config.spreadsheetId,
+      range: `${sheet}!1:1`,
+    })
+    const headers = ((headerRes.data.values?.[0] ?? []) as string[]).map(String)
+    const values = rows.map(r => headers.map(h => (r as Record<string, unknown>)[h] ?? null))
     await client.spreadsheets.values.append({
       spreadsheetId: config.spreadsheetId,
       range: sheet,
@@ -116,7 +133,7 @@ export class SheetsConnector implements DataSource {
     const headers = ((res.data.values?.[0] ?? []) as string[]).map(String)
     const colIndex = headers.indexOf(column)
     if (colIndex === -1) throw new Error(`Column "${column}" not found`)
-    const colLetter = String.fromCharCode(65 + colIndex)
+    const colLetter = colIndexToLetter(colIndex)
     await client.spreadsheets.values.update({
       spreadsheetId: config.spreadsheetId,
       range: `${sheet}!${colLetter}${rowId}`,
