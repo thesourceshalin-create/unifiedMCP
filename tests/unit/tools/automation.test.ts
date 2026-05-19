@@ -15,7 +15,19 @@ const rows = [
 ]
 
 const mockConnector = {
-  query: vi.fn().mockResolvedValue(rows),
+  query: vi.fn().mockImplementation((_target: string, _sheet: string, filters: any[]) => {
+    if (!filters || filters.length === 0) return Promise.resolve(rows)
+    return Promise.resolve(rows.filter(row =>
+      filters.every((f: any) => {
+        const cell = (row as any)[f.column]
+        switch (f.operator) {
+          case '=': return cell === f.value
+          case '!=': return cell !== f.value
+          default: return true
+        }
+      })
+    ))
+  }),
   updateCell: vi.fn().mockResolvedValue(undefined),
 }
 
