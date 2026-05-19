@@ -79,6 +79,108 @@ describe('handleConnectSource — airtable', () => {
   })
 })
 
+describe('handleConnectSource — sheets_callback', () => {
+  beforeEach(() => {
+    process.env.GOOGLE_CLIENT_ID = 'test-client-id'
+    process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret'
+  })
+
+  afterEach(() => {
+    delete process.env.GOOGLE_CLIENT_ID
+    delete process.env.GOOGLE_CLIENT_SECRET
+    vi.resetModules()
+  })
+
+  it('completes OAuth flow and saves connection when refresh_token is returned', async () => {
+    const mockGetToken = vi.fn().mockResolvedValue({ tokens: { refresh_token: 'rtoken' } })
+    vi.doMock('googleapis', () => ({
+      google: {
+        auth: {
+          OAuth2: vi.fn().mockImplementation(() => ({ getToken: mockGetToken })),
+        },
+      },
+    }))
+
+    const { handleConnectSource: handleConnectSourceMocked } = await import('../../../src/tools/auth.js')
+
+    const result = await handleConnectSourceMocked({
+      source: 'sheets_callback',
+      id: 'sid-conn',
+      label: 'My Sheets',
+      authCode: 'code123',
+      spreadsheetId: 'sid',
+    })
+
+    expect(result.isError).toBeFalsy()
+    expect(result.content[0].text).toContain('Connected')
+    expect(result.content[0].text).toContain('My Sheets')
+    expect(result.content[0].text).toContain('sid-conn')
+  })
+
+  it('returns error when no refresh_token in OAuth response', async () => {
+    const mockGetToken = vi.fn().mockResolvedValue({ tokens: {} })
+    vi.doMock('googleapis', () => ({
+      google: {
+        auth: {
+          OAuth2: vi.fn().mockImplementation(() => ({ getToken: mockGetToken })),
+        },
+      },
+    }))
+
+    const { handleConnectSource: handleConnectSourceMocked } = await import('../../../src/tools/auth.js')
+
+    const result = await handleConnectSourceMocked({
+      source: 'sheets_callback',
+      id: 'sid-conn',
+      label: 'My Sheets',
+      authCode: 'code123',
+      spreadsheetId: 'sid',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('refresh_token')
+  })
+
+  it('returns error when GOOGLE_CLIENT_ID is missing', async () => {
+    delete process.env.GOOGLE_CLIENT_ID
+
+    const result = await handleConnectSource({
+      source: 'sheets_callback',
+      id: 'sid-conn',
+      label: 'My Sheets',
+      authCode: 'code123',
+      spreadsheetId: 'sid',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('GOOGLE_CLIENT_ID')
+  })
+
+  it('returns error when authCode is missing', async () => {
+    const result = await handleConnectSource({
+      source: 'sheets_callback',
+      id: 'sid-conn',
+      label: 'My Sheets',
+      spreadsheetId: 'sid',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('authCode')
+  })
+
+  it('returns error when spreadsheetId is missing', async () => {
+    const result = await handleConnectSource({
+      source: 'sheets_callback',
+      id: 'sid-conn',
+      label: 'My Sheets',
+      authCode: 'code123',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('spreadsheetId')
+  })
+})
+
 describe('handleListConnectedSources', () => {
   it('returns empty list when no connections', async () => {
     const result = await handleListConnectedSources()

@@ -66,11 +66,31 @@ export async function handleConnectSource(params: Record<string, unknown>): Prom
       })
       return ok(`To connect Google Sheets, open this URL in your browser:\n${authUrl}\n\nAfter authorising, call connect_source again with source="sheets_callback" and the authorization code.`)
 
+    } else if (source === 'sheets_callback') {
+      const clientId = process.env.GOOGLE_CLIENT_ID
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+      if (!clientId || !clientSecret) {
+        return err('Google Sheets auth requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.')
+      }
+      const { authCode, spreadsheetId } = params as { authCode: string; spreadsheetId: string }
+      if (!authCode) return err('authCode is required for sheets_callback')
+      if (!spreadsheetId) return err('spreadsheetId is required for sheets_callback')
+      const { google } = await import('googleapis')
+      const oauth2 = new google.auth.OAuth2(clientId, clientSecret, 'http://localhost:8080/callback')
+      const { tokens } = await oauth2.getToken(authCode)
+      if (!tokens.refresh_token) {
+        return err('No refresh_token in OAuth response. Ensure the OAuth URL was generated with access_type=offline and the user granted access for the first time. If the app already has access, revoke it at https://myaccount.google.com/permissions and try again.')
+      }
+      connection = { id, type: 'sheets', label, config: { spreadsheetId, refreshToken: tokens.refresh_token, clientId, clientSecret } }
+
     } else {
       return err(`Unknown source type: ${source}. Must be 'excel', 'sheets', or 'airtable'.`)
     }
 
     await saveConnection(connection)
+    if (source === 'sheets_callback') {
+      return ok(`Connected Google Sheets "${label}" with id "${id}"`)
+    }
     return ok(`Connected "${label}" (${source}) with id "${id}"`)
   } catch (e) {
     return err(`Failed to connect: ${(e as Error).message}`)
