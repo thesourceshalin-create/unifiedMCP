@@ -3,7 +3,11 @@ import { describe, it, expect } from 'vitest'
 import { SheetsConnector } from '../../src/connectors/sheets.js'
 import type { SheetsConfig } from '../../src/types.js'
 
-const skip = !process.env.RUN_INTEGRATION || !process.env.GOOGLE_SPREADSHEET_ID
+const skip = !process.env.RUN_INTEGRATION ||
+  !process.env.GOOGLE_SPREADSHEET_ID ||
+  !process.env.GOOGLE_REFRESH_TOKEN ||
+  !process.env.GOOGLE_CLIENT_ID ||
+  !process.env.GOOGLE_CLIENT_SECRET
 const connector = new SheetsConnector()
 
 const config: SheetsConfig = {
@@ -17,11 +21,11 @@ describe.skipIf(skip)('Google Sheets integration', () => {
   it('lists sheets', async () => {
     const sheets = await connector.listSheets(config)
     expect(sheets.length).toBeGreaterThan(0)
-  })
+  }, 15000)
 
   it('queries rows from first sheet', async () => {
     const sheets = await connector.listSheets(config)
     const rows = await connector.query(config, sheets[0])
     expect(Array.isArray(rows)).toBe(true)
-  })
+  }, 15000)
 })

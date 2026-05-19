@@ -26,6 +26,7 @@ describe.skipIf(skip)('Excel integration', () => {
     await connector.insert(tempFile, 'Sales', [{ Name: 'IntTest', Revenue: 9001, Active: true }])
     const rows = await connector.query(tempFile, 'Sales', [{ column: 'Name', operator: '=', value: 'IntTest' }])
     expect(rows).toHaveLength(1)
+    expect(Number(rows[0]._rowId)).toBeGreaterThan(1)
 
     await connector.updateCell(tempFile, 'Sales', rows[0]._rowId, 'Revenue', 1)
     const updated = await connector.query(tempFile, 'Sales', [{ column: 'Name', operator: '=', value: 'IntTest' }])
