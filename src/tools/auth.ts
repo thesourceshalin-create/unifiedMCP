@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs'
+import path from 'path'
 import { saveConnection, removeConnection, loadConnections } from '../connections.js'
 import type { Connection, McpToolResult } from '../types.js'
 
@@ -26,8 +27,17 @@ export async function handleConnectSource(params: Record<string, unknown>): Prom
 
     if (source === 'excel') {
       const filePath = params.filePath as string
-      await fs.access(filePath)
-      connection = { id, type: 'excel', label, config: { filePath } }
+      if (!filePath) return err('filePath is required for Excel connections')
+      const resolved = path.resolve(filePath)
+      if (!resolved.toLowerCase().endsWith('.xlsx')) {
+        return err('Excel connections require a .xlsx file path')
+      }
+      try {
+        await fs.access(resolved)
+      } catch {
+        return err(`File not found: ${resolved}`)
+      }
+      connection = { id, type: 'excel', label, config: { filePath: resolved } }
 
     } else if (source === 'airtable') {
       const { apiKey, baseId } = params as { apiKey: string; baseId: string }
