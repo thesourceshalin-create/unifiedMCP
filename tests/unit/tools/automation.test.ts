@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { handleBulkUpdate, handleScheduleSummary, handleSetAlert } from '../../../src/tools/automation.js'
+import { handleBulkUpdate, handleScheduleSummary, handleSetAlert, handleRemoveSchedule } from '../../../src/tools/automation.js'
 
 vi.mock('../../../src/router.js', () => ({ resolveConnector: vi.fn() }))
-vi.mock('../../../src/automation/scheduler.js', () => ({ addSchedule: vi.fn().mockResolvedValue('sched-1') }))
-vi.mock('../../../src/automation/poller.js', () => ({ addAlert: vi.fn().mockResolvedValue('alert-1') }))
+vi.mock('../../../src/automation/scheduler.js', () => ({
+  addSchedule: vi.fn().mockResolvedValue('sched-1'),
+  removeSchedule: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock('../../../src/automation/poller.js', () => ({
+  addAlert: vi.fn().mockResolvedValue('alert-1'),
+  removeAlert: vi.fn().mockResolvedValue(undefined),
+}))
 
 import { resolveConnector } from '../../../src/router.js'
-import { addSchedule } from '../../../src/automation/scheduler.js'
-import { addAlert } from '../../../src/automation/poller.js'
+import { addSchedule, removeSchedule } from '../../../src/automation/scheduler.js'
+import { addAlert, removeAlert } from '../../../src/automation/poller.js'
 
 const rows = [
   { _rowId: '2', Name: 'Alice', Revenue: 1200, Active: true },
@@ -82,5 +88,21 @@ describe('handleSetAlert', () => {
       pollIntervalMs: undefined,
     })
     expect(JSON.parse(result.content[0].text).alertId).toBe('alert-1')
+  })
+})
+
+describe('handleRemoveSchedule', () => {
+  it('calls removeSchedule and removeAlert with the given id', async () => {
+    const result = await handleRemoveSchedule({ id: 'sched-1' })
+    expect(removeSchedule).toHaveBeenCalledWith('sched-1')
+    expect(removeAlert).toHaveBeenCalledWith('sched-1')
+    expect(JSON.parse(result.content[0].text).removed).toBe('sched-1')
+  })
+
+  it('returns removed id for alert ids as well', async () => {
+    const result = await handleRemoveSchedule({ id: 'alert-42' })
+    expect(removeSchedule).toHaveBeenCalledWith('alert-42')
+    expect(removeAlert).toHaveBeenCalledWith('alert-42')
+    expect(JSON.parse(result.content[0].text).removed).toBe('alert-42')
   })
 })

@@ -5,6 +5,8 @@ import path from 'path'
 import type { Schedule } from '../types.js'
 import { getConnector } from '../router.js'
 
+const runningJobs = new Map<string, cron.ScheduledTask>()
+
 function getMcpDir(): string {
   return process.env.UNIFIED_MCP_DIR ?? path.join(os.homedir(), '.unified-mcp')
 }
@@ -43,13 +45,27 @@ export async function addSchedule(params: { source: string; target: string; shee
   const schedules = await loadSchedules()
   schedules.push(full)
   await saveSchedules(schedules)
-  cron.schedule(params.cron, () => { runSummary(full).catch(console.error) })
+  const job = cron.schedule(params.cron, () => { runSummary(full).catch(console.error) })
+  runningJobs.set(id, job)
   return id
 }
 
 export async function restoreSchedules(): Promise<void> {
   const schedules = await loadSchedules()
   for (const s of schedules.filter(s => s.type === 'summary' && s.cron)) {
-    cron.schedule(s.cron!, () => { runSummary(s).catch(console.error) })
+    if (!runningJobs.has(s.id)) {
+      const job = cron.schedule(s.cron!, () => { runSummary(s).catch(console.error) })
+      runningJobs.set(s.id, job)
+    }
   }
+}
+
+export async function removeSchedule(id: string): Promise<void> {
+  const job = runningJobs.get(id)
+  if (job) {
+    job.stop()
+    runningJobs.delete(id)
+  }
+  const schedules = await loadSchedules()
+  await saveSchedules(schedules.filter(s => s.id !== id))
 }

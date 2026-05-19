@@ -4,6 +4,8 @@ import path from 'path'
 import type { Schedule, QueryFilter } from '../types.js'
 import { getConnector } from '../router.js'
 
+const runningAlerts = new Map<string, ReturnType<typeof setInterval>>()
+
 function getMcpDir(): string {
   return process.env.UNIFIED_MCP_DIR ?? path.join(os.homedir(), '.unified-mcp')
 }
@@ -56,13 +58,27 @@ export async function addAlert(params: { source: string; target: string; sheet: 
   const schedules = await loadSchedules()
   schedules.push(full)
   await saveSchedules(schedules)
-  setInterval(() => { checkAlert(full).catch(console.error) }, full.pollIntervalMs)
+  const timer = setInterval(() => { checkAlert(full).catch(console.error) }, full.pollIntervalMs)
+  runningAlerts.set(id, timer)
   return id
 }
 
 export async function restoreAlerts(): Promise<void> {
   const schedules = await loadSchedules()
   for (const s of schedules.filter(s => s.type === 'alert')) {
-    setInterval(() => { checkAlert(s).catch(console.error) }, s.pollIntervalMs ?? 300000)
+    if (!runningAlerts.has(s.id)) {
+      const timer = setInterval(() => { checkAlert(s).catch(console.error) }, s.pollIntervalMs ?? 300000)
+      runningAlerts.set(s.id, timer)
+    }
   }
+}
+
+export async function removeAlert(id: string): Promise<void> {
+  const timer = runningAlerts.get(id)
+  if (timer) {
+    clearInterval(timer)
+    runningAlerts.delete(id)
+  }
+  const schedules = await loadSchedules()
+  await saveSchedules(schedules.filter(s => s.id !== id))
 }

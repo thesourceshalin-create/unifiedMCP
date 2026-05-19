@@ -6,9 +6,9 @@ import { handleConnectSource, handleListConnectedSources, handleDisconnectSource
 import { handleReadSheet, handleAppendRow, handleUpdateCell, handleDeleteRow, handleQueryRange } from './tools/core.js'
 import { handleSummarizeSheet, handleCompareRanges, handleFindDuplicates } from './tools/analytics.js'
 import { handleListSheets, handleCreateSheet, handleRenameSheet, handleDuplicateSheet } from './tools/management.js'
-import { handleBulkUpdate, handleScheduleSummary, handleSetAlert } from './tools/automation.js'
-import { restoreSchedules } from './automation/scheduler.js'
-import { restoreAlerts } from './automation/poller.js'
+import { handleBulkUpdate, handleScheduleSummary, handleSetAlert, handleRemoveSchedule } from './tools/automation.js'
+import { restoreSchedules, removeSchedule } from './automation/scheduler.js'
+import { restoreAlerts, removeAlert } from './automation/poller.js'
 
 const server = new McpServer({ name: 'unified-mcp', version: '1.0.0' })
 
@@ -123,6 +123,10 @@ server.tool('set_alert', 'Trigger an alert when a column condition is met', {
   condition: z.string(),
   pollIntervalMs: z.number().optional(),
 }, async (p) => handleSetAlert(p as Record<string, unknown>))
+
+server.tool('remove_schedule', 'Stop and remove a scheduled summary or alert by id', {
+  id: z.string(),
+}, async (p) => handleRemoveSchedule(p as Record<string, unknown>))
 
 // Restore persisted schedules and alerts on startup
 await restoreSchedules()
