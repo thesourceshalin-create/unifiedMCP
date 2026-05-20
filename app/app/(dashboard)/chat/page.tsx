@@ -69,20 +69,22 @@ export default function ChatPage() {
         for (const event of events) {
           const line = event.split('\n').find(l => l.startsWith('data: '))
           if (!line) continue
+          let parsed: { type: string; [k: string]: unknown }
           try {
-            const parsed = JSON.parse(line.slice(6))
-            if (parsed.type === 'text') {
-              assistantText += parsed.text
-              setStreamingText(assistantText)
-            } else if (parsed.type === 'tool_start') {
-              setActiveToolCall(parsed.toolName)
-            } else if (parsed.type === 'tool_end' || parsed.type === 'tool_error') {
-              setActiveToolCall(null)
-            } else if (parsed.type === 'error') {
-              throw new Error(parsed.message)
-            }
+            parsed = JSON.parse(line.slice(6))
           } catch {
-            // Ignore individual event parse errors
+            continue
+          }
+          if (parsed.type === 'error') {
+            throw new Error(parsed.message as string)
+          }
+          if (parsed.type === 'text') {
+            assistantText += parsed.text as string
+            setStreamingText(assistantText)
+          } else if (parsed.type === 'tool_start') {
+            setActiveToolCall(parsed.toolName as string)
+          } else if (parsed.type === 'tool_end' || parsed.type === 'tool_error') {
+            setActiveToolCall(null)
           }
         }
       }
