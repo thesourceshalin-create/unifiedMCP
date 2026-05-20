@@ -16,6 +16,7 @@ export default function SourcesPage() {
   const [showModal, setShowModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [deleteError, setDeleteError] = useState('')
 
   async function load() {
     try {
@@ -33,7 +34,12 @@ export default function SourcesPage() {
   useEffect(() => { load() }, [])
 
   async function handleDelete(id: string) {
-    await fetch(`/api/sources/${id}`, { method: 'DELETE' })
+    setDeleteError('')
+    const res = await fetch(`/api/sources/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      setDeleteError(`Failed to delete source: ${res.status}`)
+      return
+    }
     setSources(s => s.filter(x => x.id !== id))
   }
 
@@ -51,6 +57,7 @@ export default function SourcesPage() {
 
       {loading && <p className="text-sm text-muted">Loading…</p>}
       {loadError && <p className="text-sm text-red-400">{loadError}</p>}
+      {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
 
       {!loading && sources.length === 0 && (
         <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border text-center">

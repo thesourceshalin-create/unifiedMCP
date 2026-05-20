@@ -21,13 +21,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { connectionId, message, history = [] } = body
-  if (!connectionId || !message) {
-    return NextResponse.json({ error: 'Missing connectionId or message' }, { status: 400 })
-  }
+  const { connectionId, message, history } = body
+
+  if (!connectionId) return NextResponse.json({ error: 'Missing connectionId' }, { status: 400 })
+  if (!message || typeof message !== 'string') return NextResponse.json({ error: 'Missing message' }, { status: 400 })
+  if (message.length > 10000) return NextResponse.json({ error: 'Message too long (max 10000 chars)' }, { status: 400 })
+  if (!Array.isArray(history)) return NextResponse.json({ error: 'history must be an array' }, { status: 400 })
+
+  // Validate each history item and cap at 50 entries
+  const validRoles = new Set(['user', 'assistant'])
+  const validatedHistory = history.slice(-50).filter(
+    (h): h is ChatMessage => h && typeof h === 'object' && validRoles.has(h.role) && typeof h.content === 'string'
+  )
 
   const messages: Anthropic.MessageParam[] = [
-    ...history.map(h => ({ role: h.role, content: h.content })),
+    ...validatedHistory.map(h => ({ role: h.role, content: h.content })),
     { role: 'user', content: message },
   ]
 
@@ -49,15 +57,23 @@ export async function POST(req: NextRequest) {
       let iterations = 0
 
       while (true) {
+        if (req.signal.aborted) break
         if (++iterations > 10) break
 
-        const response = await anthropic.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 4096,
-          system: 'You are a helpful data assistant with access to the user\'s connected data source. Use the provided tools to answer questions accurately based on the actual data. Do not invent or guess data values.',
-          tools: CHAT_TOOLS,
-          messages: currentMessages,
-        })
+        let response: Anthropic.Message | undefined
+        try {
+          response = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 4096,
+            system: 'You are a helpful data assistant with access to the user\'s connected data source. Use the provided tools to answer questions accurately based on the actual data. Do not invent or guess data values.',
+            tools: CHAT_TOOLS,
+            messages: currentMessages,
+          }, { signal: req.signal })
+        } catch (e) {
+          if (req.signal.aborted) break // client disconnected, clean exit
+          throw e // real error, propagate to outer catch
+        }
+        if (!response) break
 
         const toolUseBlocks = response.content.filter(
           (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
