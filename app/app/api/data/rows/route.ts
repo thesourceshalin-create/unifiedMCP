@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveWebConnector } from '@/lib/webConnector'
-import type { QueryFilter } from '../../../../src/types'
+import type { QueryFilter } from '@/lib/webConnector'
 
 export async function GET(req: NextRequest) {
   try {
