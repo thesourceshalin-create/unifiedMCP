@@ -1,6 +1,7 @@
 import { writeFile, mkdir, unlink } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { randomUUID } from 'crypto'
 import { ExcelConnector } from '../../src/connectors/excel.js'
 import { SheetsConnector } from '../../src/connectors/sheets.js'
 import { AirtableConnector } from '../../src/connectors/airtable.js'
@@ -31,27 +32,29 @@ export async function resolveWebConnector(connectionId: string, userId: string):
     const buf = Buffer.from(await res.arrayBuffer())
     const dir = join(tmpdir(), 'unified-mcp-web')
     await mkdir(dir, { recursive: true })
-    const tmpPath = join(dir, `${connectionId}.xlsx`)
+    const tmpPath = join(dir, `${connectionId}-${randomUUID()}.xlsx`)
     await writeFile(tmpPath, buf)
     return {
       connector: connectorMap.excel,
       target: tmpPath,
-      cleanup: async () => { try { await unlink(tmpPath) } catch {} },
+      cleanup: async () => { try { await unlink(tmpPath) } catch (e) { console.error('cleanup failed', e) } },
     }
   }
 
   if (config.type === 'sheets') {
+    const { spreadsheetId, refreshToken, clientId, clientSecret } = config
     return {
       connector: connectorMap.sheets,
-      target: config,
+      target: { spreadsheetId, refreshToken, clientId, clientSecret },
       cleanup: async () => {},
     }
   }
 
   if (config.type === 'airtable') {
+    const { baseId, apiKey } = config
     return {
       connector: connectorMap.airtable,
-      target: config,
+      target: { baseId, apiKey },
       cleanup: async () => {},
     }
   }
