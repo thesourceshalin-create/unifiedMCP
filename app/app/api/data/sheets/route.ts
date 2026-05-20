@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       await cleanup()
     }
   } catch (e) {
-    const message = (e as Error).message
+    const message = e instanceof Error ? e.message : String(e)
     if (message.includes('not found')) return NextResponse.json({ error: message }, { status: 404 })
     return NextResponse.json({ error: message }, { status: 400 })
   }

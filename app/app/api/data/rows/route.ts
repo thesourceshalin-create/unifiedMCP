@@ -22,7 +22,11 @@ export async function GET(req: NextRequest) {
     let filters: QueryFilter[] = []
     if (filtersParam) {
       try {
-        filters = JSON.parse(filtersParam)
+        const parsed = JSON.parse(filtersParam)
+        if (!Array.isArray(parsed)) {
+          return NextResponse.json({ error: 'filters must be a JSON array' }, { status: 400 })
+        }
+        filters = parsed
       } catch {
         return NextResponse.json({ error: 'Invalid filters JSON' }, { status: 400 })
       }
@@ -41,7 +45,7 @@ export async function GET(req: NextRequest) {
       await cleanup()
     }
   } catch (e) {
-    const message = (e as Error).message
+    const message = e instanceof Error ? e.message : String(e)
     if (message.includes('not found')) return NextResponse.json({ error: message }, { status: 404 })
     return NextResponse.json({ error: message }, { status: 400 })
   }
