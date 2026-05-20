@@ -27,7 +27,11 @@ export async function resolveWebConnector(connectionId: string, userId: string):
   const config = conn.config
 
   if (config.type === 'excel') {
-    const res = await fetch(config.blobUrl)
+    const blobUrl = config.blobUrl
+    if (!/^https:\/\/[^/]+\.public\.blob\.vercel-storage\.com(\/|$)/.test(blobUrl)) {
+      throw new Error(`Invalid blobUrl origin: must be a Vercel Blob public URL (*.public.blob.vercel-storage.com)`)
+    }
+    const res = await fetch(blobUrl)
     if (!res.ok) throw new Error(`Failed to fetch Excel file: ${res.statusText}`)
     const buf = Buffer.from(await res.arrayBuffer())
     const dir = join(tmpdir(), 'unified-mcp-web')
@@ -37,7 +41,7 @@ export async function resolveWebConnector(connectionId: string, userId: string):
     return {
       connector: connectorMap.excel,
       target: tmpPath,
-      cleanup: async () => { try { await unlink(tmpPath) } catch (e) { console.error('cleanup failed', e) } },
+      cleanup: async () => { try { await unlink(tmpPath) } catch (e) { console.error('[webConnector] cleanup failed for', tmpPath, e) } },
     }
   }
 
