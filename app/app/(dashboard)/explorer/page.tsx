@@ -55,7 +55,7 @@ export default function ExplorerPage() {
       <h1 className="text-lg font-semibold text-zinc-100">Data Explorer</h1>
       <SheetSelector onSelect={handleSelect} />
       {columns.length > 0 && (
-        <FilterBar columns={columns} onFiltersChange={handleFiltersChange} />
+        <FilterBar key={`${connectionId}/${sheet}`} columns={columns} onFiltersChange={handleFiltersChange} />
       )}
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="flex-1 overflow-auto">

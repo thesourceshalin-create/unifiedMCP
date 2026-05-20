@@ -17,9 +17,13 @@ export default function SheetSelector({ onSelect }: Props) {
   const [sheets, setSheets] = useState<string[]>([])
   const [sheet, setSheet] = useState('')
   const [loadingSheets, setLoadingSheets] = useState(false)
+  const [sheetsError, setSheetsError] = useState('')
 
   useEffect(() => {
-    fetch('/api/sources').then(r => r.json()).then(setSources)
+    fetch('/api/sources')
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(setSources)
+      .catch(() => {}) // sources list failing is non-fatal; selects stay empty
   }, [])
 
   async function handleConnectionChange(id: string) {
@@ -28,10 +32,17 @@ export default function SheetSelector({ onSelect }: Props) {
     setSheets([])
     if (!id) return
     setLoadingSheets(true)
+    setSheetsError('')
     try {
       const res = await fetch(`/api/data/sheets?connectionId=${id}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(err.error ?? `HTTP ${res.status}`)
+      }
       const data = await res.json()
       setSheets(Array.isArray(data) ? data : [])
+    } catch (e) {
+      setSheetsError((e as Error).message)
     } finally {
       setLoadingSheets(false)
     }
@@ -55,6 +66,7 @@ export default function SheetSelector({ onSelect }: Props) {
         {sheets.map(s => <option key={s} value={s}>{s}</option>)}
       </select>
       {loadingSheets && <span className="text-xs text-muted">Loading…</span>}
+      {sheetsError && <span className="text-xs text-red-400">{sheetsError}</span>}
     </div>
   )
 }
