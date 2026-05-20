@@ -6,3 +6,5 @@ coverage
 *.tsbuildinfo
 *.log
 .DS_Store
+.superpowers/
+tests/**/*.test.js
