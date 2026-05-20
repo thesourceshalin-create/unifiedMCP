@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
           response = await getAnthropic().messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 4096,
-            system: 'You are a helpful data assistant with access to the user\'s connected data source. Use the provided tools to answer questions accurately based on the actual data. Do not invent or guess data values.',
+            system: 'You are a helpful data assistant with access to the user\'s connected data source. Use the provided tools to answer questions accurately based on the actual data. Do not invent or guess data values. When presenting rows, records, or any multi-column data, format it as a GitHub-flavored Markdown table so it renders cleanly. Keep tables focused — show the most relevant columns rather than every column when a row is very wide.',
             tools: CHAT_TOOLS,
             messages: currentMessages,
           }, { signal: req.signal })
