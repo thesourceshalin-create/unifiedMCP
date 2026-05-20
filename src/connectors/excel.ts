@@ -2,6 +2,26 @@ import ExcelJS from 'exceljs'
 import type { DataSource, Row, SheetSchema, ColumnSchema, QueryFilter } from '../types.js'
 
 
+/**
+ * Find the actual header row in a worksheet.
+ * Scans the first 20 rows for the first row with 2+ non-null cells whose values
+ * are not all identical (which would indicate a merged title/description row).
+ * Falls back to row 1 if nothing better is found.
+ */
+function findHeaderRow(ws: ExcelJS.Worksheet): number {
+  for (let r = 1; r <= Math.min(20, ws.rowCount); r++) {
+    const row = ws.getRow(r)
+    const values: string[] = []
+    row.eachCell({ includeEmpty: false }, cell => {
+      if (cell.value !== null && cell.value !== undefined) {
+        values.push(String(cell.value))
+      }
+    })
+    if (values.length >= 2 && new Set(values).size >= 2) return r
+  }
+  return 1
+}
+
 function matchesFilter(value: unknown, filter: QueryFilter): boolean {
   const v = value as string | number | boolean | null
   const f = filter.value
@@ -31,16 +51,18 @@ export class ExcelConnector implements DataSource {
     const ws = wb.getWorksheet(sheet)
     if (!ws) throw new Error(`Sheet "${sheet}" not found in ${target}`)
 
-    const headerRow = ws.getRow(1)
+    const headerRowNum = findHeaderRow(ws)
     const columnNames: string[] = []
-    headerRow.eachCell(cell => { columnNames.push(String(cell.value ?? '')) })
+    ws.getRow(headerRowNum).eachCell({ includeEmpty: false }, cell => {
+      columnNames.push(String(cell.value ?? ''))
+    })
 
     const columnStats: Map<string, { nullCount: number; samples: (string | number | boolean | null)[]; type: Set<string> }> =
       new Map(columnNames.map(n => [n, { nullCount: 0, samples: [], type: new Set() }]))
 
     let rowCount = 0
     ws.eachRow((row, rowNum) => {
-      if (rowNum === 1) return
+      if (rowNum <= headerRowNum) return
       rowCount++
       columnNames.forEach((name, i) => {
         const cell = row.getCell(i + 1)
@@ -73,13 +95,15 @@ export class ExcelConnector implements DataSource {
     const ws = wb.getWorksheet(sheet)
     if (!ws) throw new Error(`Sheet "${sheet}" not found in ${target}`)
 
-    const headerRow = ws.getRow(1)
+    const headerRowNum = findHeaderRow(ws)
     const columnNames: string[] = []
-    headerRow.eachCell(cell => { columnNames.push(String(cell.value ?? '')) })
+    ws.getRow(headerRowNum).eachCell({ includeEmpty: false }, cell => {
+      columnNames.push(String(cell.value ?? ''))
+    })
 
     const results: Row[] = []
     ws.eachRow((row, rowNum) => {
-      if (rowNum === 1) return
+      if (rowNum <= headerRowNum) return
       if (limit !== undefined && results.length >= limit) return
 
       const record: Row = { _rowId: String(rowNum) }
