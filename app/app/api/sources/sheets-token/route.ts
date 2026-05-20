@@ -20,6 +20,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing authCode, spreadsheetId, or label' }, { status: 400 })
     }
 
+    // Accept either a bare spreadsheet ID or a full Google Sheets URL.
+    const idMatch = spreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/)
+    const normalizedSpreadsheetId = idMatch ? idMatch[1] : spreadsheetId
+
     const { google } = await import('googleapis')
     const oauth2 = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -36,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     const config: WebConfig = {
       type: 'sheets',
-      spreadsheetId,
+      spreadsheetId: normalizedSpreadsheetId,
       refreshToken: tokens.refresh_token,
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
