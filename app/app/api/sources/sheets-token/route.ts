@@ -1,21 +1,23 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { createConnection } from '@/lib/connections'
+import type { WebConfig } from '@/lib/connections'
 
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let body: { authCode?: string; spreadsheetId?: string }
+    let body: { authCode?: string; spreadsheetId?: string; label?: string }
     try {
       body = await req.json()
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    const { authCode, spreadsheetId } = body
-    if (!authCode || !spreadsheetId) {
-      return NextResponse.json({ error: 'Missing authCode or spreadsheetId' }, { status: 400 })
+    const { authCode, spreadsheetId, label } = body
+    if (!authCode || !spreadsheetId || !label) {
+      return NextResponse.json({ error: 'Missing authCode, spreadsheetId, or label' }, { status: 400 })
     }
 
     const { google } = await import('googleapis')
@@ -31,15 +33,17 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    return NextResponse.json({
-      config: {
-        type: 'sheets',
-        spreadsheetId,
-        refreshToken: tokens.refresh_token,
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      },
-    })
+
+    const config: WebConfig = {
+      type: 'sheets',
+      spreadsheetId,
+      refreshToken: tokens.refresh_token,
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }
+
+    const conn = await createConnection(userId, 'sheets', label, config)
+    return NextResponse.json({ id: conn.id, type: conn.type, label: conn.label, createdAt: conn.createdAt }, { status: 201 })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

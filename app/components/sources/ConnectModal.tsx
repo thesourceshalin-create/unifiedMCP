@@ -38,9 +38,15 @@ export default function ConnectModal({ onClose, onCreated }: Props) {
     setSourceType(type)
     setError('')
     if (type === 'sheets') {
-      const res = await fetch('/api/sources/sheets-auth-url')
-      const { url } = await res.json()
-      setOauthUrl(url)
+      try {
+        const res = await fetch('/api/sources/sheets-auth-url')
+        if (!res.ok) throw new Error('Failed to get OAuth URL')
+        const { url } = await res.json()
+        setOauthUrl(url)
+      } catch (e) {
+        setError((e as Error).message)
+        return
+      }
     }
     setStep('configure')
   }
@@ -63,11 +69,13 @@ export default function ConnectModal({ onClose, onCreated }: Props) {
         const tokenRes = await fetch('/api/sources/sheets-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ authCode: sheetsAuthCode, spreadsheetId: sheetsId }),
+          body: JSON.stringify({ authCode: sheetsAuthCode, spreadsheetId: sheetsId, label }),
         })
-        if (!tokenRes.ok) throw new Error('OAuth exchange failed')
-        const { config } = await tokenRes.json()
-        await saveConnection(config)
+        if (!tokenRes.ok) {
+          const data = await tokenRes.json()
+          throw new Error(data.error ?? 'OAuth exchange failed')
+        }
+        // Connection saved server-side — no need to call saveConnection separately
       } else if (sourceType === 'airtable') {
         await saveConnection({ type: 'airtable', apiKey: airtableKey, baseId: airtableBase })
       }
@@ -98,7 +106,7 @@ export default function ConnectModal({ onClose, onCreated }: Props) {
       <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-zinc-100">Connect a data source</h2>
-          <button onClick={onClose} className="text-muted hover:text-white">✕</button>
+          <button onClick={onClose} disabled={step === 'saving'} className="text-muted hover:text-white disabled:opacity-40 disabled:cursor-not-allowed">✕</button>
         </div>
 
         {step === 'pick' && (

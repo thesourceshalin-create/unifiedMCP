@@ -9,8 +9,13 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData()
     const file = formData.get('file') as File | null
+    const MAX_SIZE_MB = 50
+    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024
     if (!file || !file.name.endsWith('.xlsx')) {
       return NextResponse.json({ error: 'Only .xlsx files are supported' }, { status: 400 })
+    }
+    if (file.size > MAX_SIZE_BYTES) {
+      return NextResponse.json({ error: `File too large. Maximum size is ${MAX_SIZE_MB} MB` }, { status: 400 })
     }
 
     const blob = await put(`${userId}/${Date.now()}-${file.name}`, file.stream(), {

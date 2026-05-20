@@ -15,12 +15,19 @@ export default function SourcesPage() {
   const [sources, setSources] = useState<Source[]>([])
   const [showModal, setShowModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
   async function load() {
-    const res = await fetch('/api/sources')
-    const data = await res.json()
-    setSources(data)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/sources')
+      if (!res.ok) throw new Error(`Failed to load sources: ${res.status}`)
+      const data = await res.json()
+      setSources(data)
+    } catch (e) {
+      setLoadError((e as Error).message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -43,6 +50,7 @@ export default function SourcesPage() {
       </div>
 
       {loading && <p className="text-sm text-muted">Loading…</p>}
+      {loadError && <p className="text-sm text-red-400">{loadError}</p>}
 
       {!loading && sources.length === 0 && (
         <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border text-center">
