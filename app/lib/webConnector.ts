@@ -5,7 +5,8 @@ import { randomUUID } from 'crypto'
 import { ExcelConnector } from '../../src/connectors/excel.js'
 import { SheetsConnector } from '../../src/connectors/sheets.js'
 import { AirtableConnector } from '../../src/connectors/airtable.js'
-import type { DataSource } from '../../src/types.js'
+import type { DataSource, QueryFilter } from '../../src/types.js'
+export type { QueryFilter }
 import { getConnection } from './connections'
 
 const connectorMap: Record<string, DataSource> = {

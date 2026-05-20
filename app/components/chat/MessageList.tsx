@@ -17,7 +17,7 @@ export default function MessageList({ messages, streamingText, activeToolCall, s
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
       {messages.map((msg, i) => (
         <div
-          key={i}
+          key={`${msg.role}-${i}-${msg.content.slice(0, 20)}`}
           className={`max-w-2xl rounded-lg px-4 py-3 text-sm leading-relaxed ${
             msg.role === 'user'
               ? 'self-end bg-surface border border-border text-zinc-200'

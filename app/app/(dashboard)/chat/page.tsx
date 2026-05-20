@@ -58,27 +58,31 @@ export default function ChatPage() {
       let assistantText = ''
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
+      let buf = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value)
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue
+        buf += decoder.decode(value, { stream: true })
+        const events = buf.split('\n\n')
+        buf = events.pop() ?? ''
+        for (const event of events) {
+          const line = event.split('\n').find(l => l.startsWith('data: '))
+          if (!line) continue
           try {
-            const event = JSON.parse(line.slice(6))
-            if (event.type === 'text') {
-              assistantText += event.text
+            const parsed = JSON.parse(line.slice(6))
+            if (parsed.type === 'text') {
+              assistantText += parsed.text
               setStreamingText(assistantText)
-            } else if (event.type === 'tool_start') {
-              setActiveToolCall(event.toolName)
-            } else if (event.type === 'tool_end' || event.type === 'tool_error') {
+            } else if (parsed.type === 'tool_start') {
+              setActiveToolCall(parsed.toolName)
+            } else if (parsed.type === 'tool_end' || parsed.type === 'tool_error') {
               setActiveToolCall(null)
-            } else if (event.type === 'error') {
-              throw new Error(event.message)
+            } else if (parsed.type === 'error') {
+              throw new Error(parsed.message)
             }
-          } catch (parseErr) {
-            // Ignore individual line parse errors
+          } catch {
+            // Ignore individual event parse errors
           }
         }
       }
