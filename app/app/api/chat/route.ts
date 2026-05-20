@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import type Anthropic from '@anthropic-ai/sdk'
-import { anthropic, CHAT_TOOLS } from '@/lib/claude'
+import { getAnthropic, CHAT_TOOLS } from '@/lib/claude'
 import { resolveWebConnector } from '@/lib/webConnector'
 import type { QueryFilter } from '@/lib/webConnector'
 
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
         let response: Anthropic.Message | undefined
         try {
-          response = await anthropic.messages.create({
+          response = await getAnthropic().messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 4096,
             system: 'You are a helpful data assistant with access to the user\'s connected data source. Use the provided tools to answer questions accurately based on the actual data. Do not invent or guess data values.',
@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
         ]
       }
     } catch (e) {
+      console.error('[POST /api/chat] stream error', e)
       await writeEvent('error', { message: e instanceof Error ? e.message : String(e) })
     } finally {
       await writer.close()

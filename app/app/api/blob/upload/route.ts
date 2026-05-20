@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ url: blob.url })
-  } catch {
+  } catch (e) {
+    console.error('[POST /api/blob/upload]', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -17,7 +17,8 @@ export async function GET() {
       createdAt: c.createdAt,
     }))
     return NextResponse.json(safe)
-  } catch {
+  } catch (e) {
+    console.error('[GET /api/sources]', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

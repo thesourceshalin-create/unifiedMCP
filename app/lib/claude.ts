@@ -1,6 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-export const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+let client: Anthropic | null = null
+
+export function getAnthropic(): Anthropic {
+  if (!client) {
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set in the environment')
+    client = new Anthropic({ apiKey })
+  }
+  return client
+}
 
 export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
